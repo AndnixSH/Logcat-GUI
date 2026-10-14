@@ -112,11 +112,16 @@ class Adb(val path: String?) {
     }
 
     companion object {
-        private val isWindows = System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
+        private val osName = System.getProperty("os.name")
+        private val isWindows = osName.startsWith("Windows", ignoreCase = true)
+        private val isMac = osName.startsWith("Mac", ignoreCase = true)
 
         /**
          * Looks for adb in, in order: `ADB_PATH`, `ANDROID_HOME`, `ANDROID_SDK_ROOT`, `PATH`,
-         * then the default SDK location for this OS.
+         * the default Android Studio SDK location, then common package-manager locations.
+         *
+         * The last two matter on macOS: apps started from Finder or the Dock get a minimal
+         * `PATH` that doesn't include Homebrew or the SDK.
          */
         fun locate(): Adb {
             val exe = if (isWindows) "adb.exe" else "adb"
@@ -129,11 +134,20 @@ class Adb(val path: String?) {
                 System.getenv("PATH")?.split(File.pathSeparator)?.forEach { add(File(it, exe)) }
                 when {
                     isWindows -> System.getenv("LOCALAPPDATA")?.let { add(File(it, "Android/Sdk/platform-tools/$exe")) }
-                    System.getProperty("os.name").startsWith("Mac") -> add(File(home, "Library/Android/sdk/platform-tools/$exe"))
-                    else -> add(File(home, "Android/Sdk/platform-tools/$exe"))
+                    isMac -> {
+                        add(File(home, "Library/Android/sdk/platform-tools/$exe"))
+                        add(File("/opt/homebrew/bin/$exe"))            // Homebrew, Apple silicon
+                        add(File("/usr/local/bin/$exe"))               // Homebrew, Intel
+                    }
+                    else -> {
+                        add(File(home, "Android/Sdk/platform-tools/$exe"))
+                        add(File("/usr/bin/$exe"))                     // distro package (android-tools)
+                        add(File("/usr/lib/android-sdk/platform-tools/$exe"))
+                        add(File("/opt/android-sdk/platform-tools/$exe"))
+                    }
                 }
             }
-            return Adb(candidates.firstOrNull { it.isFile }?.absolutePath)
+            return Adb(candidates.firstOrNull { it.isFile && it.canExecute() }?.absolutePath)
         }
     }
 }

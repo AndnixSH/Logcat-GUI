@@ -200,7 +200,7 @@ values: recently seen tags, packages and processes, levels, `is:` kinds, and age
   glyph.
 - **`LineHeightStyle.Trim.None`** gives uniform line spacing.
 - **Popups render in the window's own layer.** That is what makes the offscreen snapshots
-  (§13) possible.
+  (§14) possible.
 
 ## 11. Files, settings, devices
 
@@ -236,7 +236,40 @@ with a newer version, extract the same files again.
 The values were cross-checked by sampling pixels from AS screenshots. For example, tag
 `Bundle` renders in `#D28546`, which `MessageFormatterTest` asserts.
 
-## 13. Verification
+## 13. Platforms and packaging
+
+Targets: Windows x64, macOS x64 and arm64, and Linux x64 and arm64.
+
+- **Portable parts.** Nearly all the code is plain JVM: Kotlin, Compose, R8, and
+  serialization. The fonts are bundled, so there is no system-font dependency.
+- **Native graphics.** Skia comes from `compose.desktop.currentOs`, which resolves to the
+  native build for whichever OS and CPU runs Gradle.
+- **Installers.** `jpackage` builds them and bundles a trimmed runtime: the `modules(…)`
+  from `suggestRuntimeModules` plus Compose's defaults. Because `jpackage` can't
+  cross-compile, `.github/workflows/build.yml` builds on one runner per target:
+  `windows-latest`, `macos-15` (arm64), `macos-15-intel`, `ubuntu-24.04`, and
+  `ubuntu-24.04-arm`.
+
+| Concern | Windows | macOS | Linux |
+|---|---|---|---|
+| Title bar | DWM caption colors via JNA (`WindowChrome`) | `apple.awt.application.appearance=NSAppearanceNameDarkAqua`, set before AWT starts | window manager default |
+| Settings shortcut | Ctrl+Alt+S | ⌘, plus Ctrl+Alt+S; the app menu's About/Settings go to our dialogs (`Desktop.setAboutHandler` / `setPreferencesHandler`) | Ctrl+Alt+S |
+| File dialog filters | wildcard file name (`*.logcat;*.txt`) | `FilenameFilter` | `FilenameFilter` (GTK dialog) |
+| Open / reveal | `Desktop.open`, `explorer /select,` | `Desktop.open`, `open -R` | `Desktop.open`, or `xdg-open` if unsupported |
+| adb discovery | env, `PATH`, `%LOCALAPPDATA%\Android\Sdk` | env, `PATH`, `~/Library/Android/sdk`, Homebrew (Finder-launched apps have a minimal `PATH`) | env, `PATH`, `~/Android/Sdk`, `/usr/bin`, `/usr/lib/android-sdk`, `/opt/android-sdk` |
+| Settings file | `%APPDATA%\LogcatGUI` | `~/Library/Application Support/LogcatGUI` | `$XDG_CONFIG_HOME/logcat-gui` |
+| Installer / icon | MSI, `app.ico` | DMG, `app.icns` (inset to Apple's icon grid) | DEB + RPM, `app.png` |
+
+Line endings are pinned in `.gitattributes`: `gradlew` is LF and committed as executable,
+so `./gradlew` works on a fresh macOS or Linux checkout. The installer icons are generated
+from the app SVG by `./gradlew generateIcons`, which writes PNG-compressed ICO and ICNS
+entries.
+
+**Not verified on real hardware yet.** Only Windows x64 has been built and run here. The
+macOS and Linux paths are exercised by the CI workflow, which runs once the repository is
+pushed to GitHub. The DMG is unsigned (see the README).
+
+## 14. Verification
 
 - **Unit tests** (`./gradlew test`) cover:
   - the parser and filter language, including regex, exact match, `age:`, `is:`, and case
@@ -254,7 +287,7 @@ The values were cross-checked by sampling pixels from AS screenshots. For exampl
   settings page, About, the options menu, and a split window in both wrap modes. The output
   goes to `build/ui-snapshots/`. No device or visible window is needed.
 
-## 14. Roadmap
+## 15. Roadmap
 
 | Item | Notes |
 |---|---|
@@ -266,7 +299,7 @@ The values were cross-checked by sampling pixels from AS screenshots. For exampl
 | `package:mine` | Let users pick their app ids, since there is no project to read them from |
 | `adb track-devices` | Replace polling with the adb host protocol |
 
-## 15. License rules for borrowing AS code
+## 16. License rules for borrowing AS code
 
 AOSP's Android Studio code and the IntelliJ Platform are Apache 2.0, the same license as this
 project. Porting is allowed as long as you:

@@ -46,6 +46,16 @@ tasks.register<JavaExec>("uiSnapshots") {
     args(layout.buildDirectory.dir("ui-snapshots").get().asFile.absolutePath)
 }
 
+// Regenerates packaging/icons/app.{ico,icns,png} from icons/app-icon.svg (outputs are committed).
+tasks.register<JavaExec>("generateIcons") {
+    group = "build setup"
+    description = "Renders the app icon SVG into the installer icon formats under packaging/icons."
+    dependsOn("testClasses")
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("dev.logcatgui.tools.IconGeneratorKt")
+    args(layout.projectDirectory.dir("packaging/icons").asFile.absolutePath)
+}
+
 // Version info shown in the About dialog.
 tasks.processResources {
     val props = mapOf(
@@ -61,20 +71,40 @@ compose.desktop {
     application {
         mainClass = "dev.logcatgui.MainKt"
 
+        // Installers come from jpackage, which only builds for the OS and CPU it runs on:
+        // build each one on its own machine (see .github/workflows/build.yml).
         nativeDistributions {
-            targetFormats(TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Dmg)
+            targetFormats(TargetFormat.Msi, TargetFormat.Dmg, TargetFormat.Deb, TargetFormat.Rpm)
             // From `./gradlew suggestRuntimeModules` (R8, JNA and serialization need these).
             modules("java.instrument", "java.sql", "jdk.management", "jdk.unsupported")
             packageName = "LogcatGUI"
+            // Installer version: MSI needs MAJOR <= 255, DMG needs MAJOR > 0.
             packageVersion = "1.0.0"
             description = "A standalone Logcat viewer inspired by Android Studio's Logcat panel."
             vendor = "Logcat-GUI Authors"
+            copyright = "Copyright 2026 The Logcat-GUI Authors. Apache License 2.0."
             licenseFile.set(rootProject.file("LICENSE"))
 
             windows {
+                iconFile.set(project.file("packaging/icons/app.ico"))
                 menuGroup = "Logcat GUI"
+                shortcut = true
+                dirChooser = true
                 // Stable, randomly-generated GUID so MSI upgrades replace in place.
                 upgradeUuid = "7E8B0E2C-4C2B-4F3A-9F1E-2A6B9C0D1E2F"
+            }
+            macOS {
+                iconFile.set(project.file("packaging/icons/app.icns"))
+                bundleID = "dev.logcatgui"
+                dockName = "Logcat GUI"
+                appCategory = "public.app-category.developer-tools"
+            }
+            linux {
+                iconFile.set(project.file("packaging/icons/app.png"))
+                packageName = "logcat-gui"
+                menuGroup = "Development"
+                appCategory = "Development"
+                shortcut = true
             }
         }
     }

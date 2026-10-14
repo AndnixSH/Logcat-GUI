@@ -77,6 +77,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import dev.logcatgui.LocalAppServices
 import dev.logcatgui.Notification
+import dev.logcatgui.platform.isMac
 import dev.logcatgui.ui.components.ActionButton
 import dev.logcatgui.ui.components.IdeLink
 import dev.logcatgui.ui.components.IdeMenu
@@ -151,7 +152,7 @@ private fun ToolWindowHeader(controller: AppController) {
             if (optionsOpen) {
                 IdeMenu(
                     entries = listOf(
-                        MenuItem("Settings…", { controller.openSettings() }, icon = Icons.Settings, trailing = "Ctrl+Alt+S"),
+                        MenuItem("Settings…", { controller.openSettings() }, icon = Icons.Settings, trailing = if (isMac) "⌘," else "Ctrl+Alt+S"),
                         MenuItem("Logcat Format…", { controller.openSettings(SettingsPage.FORMAT) }, icon = Icons.Format),
                         MenuItem("Import Logs from a File…", controller::importFile, icon = Icons.Import),
                         MenuSeparator,

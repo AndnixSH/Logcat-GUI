@@ -64,6 +64,26 @@ Built with Kotlin and Compose Multiplatform (Desktop). Licensed under Apache 2.0
   Settings are saved in `%APPDATA%\LogcatGUI\settings.json` on Windows, `~/Library/Application Support/LogcatGUI` on macOS, and `~/.config/logcat-gui` on Linux.
 - **About** (⋮ → About Logcat GUI). Shows the version, runtime, adb path and version, the settings file location, and the acknowledgements.
 
+## Platforms
+
+| OS | x64 | arm64 | Installer |
+|---|---|---|---|
+| Windows 10/11 | ✓ | — | MSI |
+| macOS 12+ | ✓ (Intel) | ✓ (Apple silicon) | DMG |
+| Linux | ✓ | ✓ | DEB, RPM |
+
+The app is the same everywhere. Platform-specific behavior:
+
+- **macOS:**
+  - ⌘, opens Settings.
+  - The app menu's About and Settings items work.
+  - The title bar is dark.
+  - adb is also found in Homebrew's folders and the default SDK location, because apps
+    started from Finder don't see your shell's `PATH`.
+- **Linux:** file pickers use the GTK dialog, and "Open" / "Show in folder" fall back to
+  `xdg-open`.
+- **Windows:** the title bar takes the IDE's dark colors.
+
 ## Requirements
 
 - JDK 21 (the Gradle toolchain is set to 21)
@@ -71,7 +91,10 @@ Built with Kotlin and Compose Multiplatform (Desktop). Licensed under Apache 2.0
   1. `ADB_PATH`
   2. `ANDROID_HOME/platform-tools` or `ANDROID_SDK_ROOT/platform-tools`
   3. `PATH`
-  4. the default SDK location
+  4. the default SDK location (`%LOCALAPPDATA%\Android\Sdk`, `~/Library/Android/sdk`,
+     `~/Android/Sdk`)
+  5. package-manager locations: Homebrew's `/opt/homebrew/bin` and `/usr/local/bin`, and
+     on Linux `/usr/bin`, `/usr/lib/android-sdk`, and `/opt/android-sdk`
 
 ## Run
 
@@ -96,12 +119,35 @@ window) to `build/ui-snapshots/*.png`:
 
 ## Package a native installer
 
-```bash
-./gradlew packageDistributionForCurrentOS
-```
+Installers are built with `jpackage`, which only targets the OS and CPU it runs on. To get a
+macOS arm64 DMG, build on an Apple-silicon Mac; to get a Linux arm64 DEB, build on an arm64
+Linux machine.
 
-The installer (MSI on Windows, DEB on Linux, DMG on macOS) ends up in
-`build/compose/binaries/main/`.
+| On | Command | Output in `build/compose/binaries/main/` |
+|---|---|---|
+| Windows | `gradlew.bat packageMsi` | `msi/LogcatGUI-1.0.0.msi` |
+| macOS | `./gradlew packageDmg` | `dmg/LogcatGUI-1.0.0.dmg` |
+| Linux | `./gradlew packageDeb packageRpm` | `deb/`, `rpm/` (needs `fakeroot` and `rpm`) |
+| any | `./gradlew createDistributable` | `app/`, a runnable app folder with a bundled Java runtime |
+
+Every installer bundles a trimmed Java runtime, so users don't need Java.
+
+**CI.** [.github/workflows/build.yml](.github/workflows/build.yml) tests and packages on five
+GitHub runners: Windows x64, macOS arm64, macOS x64, Linux x64, and Linux arm64. Pushing a
+`v*` tag (e.g. `git tag v1.0.0 && git push --tags`) publishes all the installers as a GitHub
+release.
+
+**macOS signing.** The DMG is not signed or notarized. Gatekeeper blocks it the first time;
+right-click the app and choose **Open**, or run `xattr -dr com.apple.quarantine "/Applications/Logcat GUI.app"`.
+For signed builds, add a Developer ID to the `macOS { signing { … } }` block in
+`build.gradle.kts`.
+
+**Icons.** `packaging/icons/app.{ico,icns,png}` are generated from `icons/app-icon.svg`.
+After changing the SVG, regenerate them:
+
+```bash
+./gradlew generateIcons
+```
 
 ## Filter cheat sheet
 
@@ -127,7 +173,7 @@ unless **Cc** is on. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §8 has the fu
 | Ctrl+Space | Filter completion |
 | Enter | Apply the filter and save it to history |
 | Up / Down, Enter, Esc | Navigate, choose, and close popups |
-| Ctrl+Alt+S | Settings |
+| Ctrl+Alt+S (⌘, on macOS) | Settings |
 | Double-click a tab | Rename it |
 | Middle-click a tab | Close it |
 
@@ -144,7 +190,7 @@ src/main/kotlin/dev/logcatgui/
 ├── files/                   LogcatFiles  (.logcat JSON, threadtime/bugreport import)
 ├── retrace/                 ProguardRetracer  (R8)
 ├── settings/                AppSettings, FormattingOptions, SettingsStore
-├── platform/                file dialogs, clipboard, dark title bar (JNA)
+├── platform/                OS detection, file dialogs, clipboard, open/reveal, dark title bar (JNA)
 └── ui/
     ├── theme/               IdeColors (Islands Dark), LogColors + TagPalette, fonts, icons
     ├── components/          ActionButton, OverflowToolbar, IdePopup/IdeMenu, controls

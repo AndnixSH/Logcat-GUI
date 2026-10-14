@@ -64,7 +64,7 @@ class AppController(private val services: AppServices) : PanelHost {
     }
 
     override fun importFile() {
-        val file = FileDialogs.open(awtWindow, "Import Logs from a File", lastDirectory, "*.logcat;*.txt;*.log") ?: return
+        val file = FileDialogs.open(awtWindow, "Import Logs from a File", lastDirectory, listOf(LogcatFiles.EXTENSION, "txt", "log")) ?: return
         rememberDirectory(file)
         openFile(file)
     }
@@ -89,7 +89,7 @@ class AppController(private val services: AppServices) : PanelHost {
     }
 
     override fun chooseMapping(panel: LogcatPanelState) {
-        val file = FileDialogs.open(awtWindow, "Select a Proguard Mapping File", lastDirectory, "*.txt") ?: return
+        val file = FileDialogs.open(awtWindow, "Select a Proguard Mapping File", lastDirectory, listOf("txt", "map")) ?: return
         rememberDirectory(file)
         panel.loadMapping(file)
     }

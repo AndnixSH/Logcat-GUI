@@ -36,24 +36,46 @@ import java.io.ByteArrayInputStream
 import java.io.File
 import javax.imageio.ImageIO
 
-val isWindows: Boolean = System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
+private val osName: String = System.getProperty("os.name")
+val isWindows: Boolean = osName.startsWith("Windows", ignoreCase = true)
+val isMac: Boolean = osName.startsWith("Mac", ignoreCase = true)
 
-/** Native open/save dialogs (AWT `FileDialog`, which uses the OS dialog on Windows and macOS). */
+/**
+ * Native open/save dialogs (AWT `FileDialog`: the system dialog on Windows and macOS, the GTK
+ * one on Linux).
+ */
 object FileDialogs {
-    fun open(parent: Window?, title: String, directory: String?, pattern: String? = null): File? =
-        show(parent, title, FileDialog.LOAD, directory, pattern)
+    /** [extensions] (without dots) limit which files can be picked; empty means any file. */
+    fun open(parent: Window?, title: String, directory: String?, extensions: List<String> = emptyList()): File? {
+        val dialog = create(parent, title, FileDialog.LOAD, directory)
+        if (extensions.isNotEmpty()) {
+            if (isWindows) {
+                // Windows ignores FilenameFilter; a wildcard in the file name acts as the filter.
+                dialog.file = extensions.joinToString(";") { "*.$it" }
+            } else {
+                dialog.setFilenameFilter { _, name -> extensions.any { name.endsWith(".$it", ignoreCase = true) } }
+            }
+        }
+        return show(dialog)
+    }
 
-    fun save(parent: Window?, title: String, directory: String?, defaultName: String): File? =
-        show(parent, title, FileDialog.SAVE, directory, defaultName)
+    fun save(parent: Window?, title: String, directory: String?, defaultName: String): File? {
+        val dialog = create(parent, title, FileDialog.SAVE, directory)
+        dialog.file = defaultName
+        return show(dialog)
+    }
 
-    private fun show(parent: Window?, title: String, mode: Int, directory: String?, file: String?): File? {
+    private fun create(parent: Window?, title: String, mode: Int, directory: String?): FileDialog {
         val dialog = when (parent) {
             is Frame -> FileDialog(parent, title, mode)
             is Dialog -> FileDialog(parent, title, mode)
             else -> FileDialog(null as Frame?, title, mode)
         }
         directory?.let { dialog.directory = it }
-        file?.let { dialog.file = it }
+        return dialog
+    }
+
+    private fun show(dialog: FileDialog): File? {
         dialog.isVisible = true
         val name = dialog.file ?: return null
         return File(dialog.directory, name)
@@ -83,7 +105,12 @@ object Clipboard {
 object Shell {
     /** Opens [file] with its default app; returns false if the platform can't. */
     fun open(file: File): Boolean = try {
-        Desktop.getDesktop().open(file)
+        if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+            Desktop.getDesktop().open(file)
+        } else {
+            // Linux desktops without GNOME libraries: fall back to the freedesktop opener.
+            ProcessBuilder(if (isMac) "open" else "xdg-open", file.absolutePath).start()
+        }
         true
     } catch (_: Exception) {
         false
@@ -94,8 +121,8 @@ object Shell {
         try {
             when {
                 isWindows -> ProcessBuilder("explorer.exe", "/select,", file.absolutePath).start()
-                System.getProperty("os.name").startsWith("Mac") -> ProcessBuilder("open", "-R", file.absolutePath).start()
-                else -> Desktop.getDesktop().open(file.parentFile)
+                isMac -> ProcessBuilder("open", "-R", file.absolutePath).start()
+                else -> open(file.parentFile ?: file)
             }
         } catch (_: Exception) {
         }

@@ -15,6 +15,7 @@
  */
 package dev.logcatgui
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -23,14 +24,18 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import dev.logcatgui.platform.WindowChrome
+import dev.logcatgui.platform.isMac
+import java.awt.Desktop
 import dev.logcatgui.ui.dialogs.AboutDialog
 import dev.logcatgui.ui.dialogs.ScreenRecorderDialog
 import dev.logcatgui.ui.dialogs.ScreenshotDialog
@@ -43,7 +48,15 @@ import dev.logcatgui.ui.theme.LogColors
 import dev.logcatgui.ui.window.AppController
 import dev.logcatgui.ui.window.LogcatWindow
 
-fun main() = application {
+fun main() {
+    // The UI is dark-only; on macOS this makes the native title bar dark too. Must be set
+    // before AWT starts.
+    if (isMac) System.setProperty("apple.awt.application.appearance", "NSAppearanceNameDarkAqua")
+    application { App() }
+}
+
+@Composable
+private fun ApplicationScope.App() {
     val services = remember { AppServices() }
     val controller = remember { AppController(services) }
     DisposableEffect(Unit) {
@@ -51,6 +64,13 @@ fun main() = application {
             controller.dispose()
             services.dispose()
         }
+    }
+    // macOS app menu: "About Logcat GUI" and "Settings…" (⌘,) open our dialogs.
+    LaunchedEffect(Unit) {
+        if (!Desktop.isDesktopSupported()) return@LaunchedEffect
+        val desktop = Desktop.getDesktop()
+        if (desktop.isSupported(Desktop.Action.APP_ABOUT)) desktop.setAboutHandler { controller.aboutOpen = true }
+        if (desktop.isSupported(Desktop.Action.APP_PREFERENCES)) desktop.setPreferencesHandler { controller.openSettings() }
     }
     val colorScheme = services.settings.settings.colors
     val logColors = remember(colorScheme) { LogColors(colorScheme) }
@@ -61,7 +81,9 @@ fun main() = application {
         icon = remember { Icons.painter(Icons.AppIcon) },
         state = rememberWindowState(size = DpSize(1360.dp, 860.dp)),
         onPreviewKeyEvent = { e ->
-            if (e.type == KeyEventType.KeyDown && e.isCtrlPressed && e.isAltPressed && e.key == Key.S) {
+            val settingsShortcut = (e.isCtrlPressed && e.isAltPressed && e.key == Key.S) ||
+                (isMac && e.isMetaPressed && e.key == Key.Comma)
+            if (e.type == KeyEventType.KeyDown && settingsShortcut) {
                 controller.openSettings()
                 true
             } else {
