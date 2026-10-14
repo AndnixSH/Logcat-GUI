@@ -1,0 +1,15 @@
+# Normalize text to LF in the repository; keep Windows scripts CRLF on checkout and
+# Unix scripts LF everywhere (gradlew must run on Linux and macOS).
+* text=auto
+
+gradlew   text eol=lf
+*.sh      text eol=lf
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+
+*.jar     binary
+*.png     binary
+*.ico     binary
+*.icns    binary
+*.otf     binary
+*.ttf     binary

@@ -1,0 +1,26 @@
+[versions]
+# Known-good, mutually compatible stable set. Bump together; the Compose
+# compiler and serialization plugin versions MUST match the Kotlin version.
+kotlin = "2.1.0"
+compose = "1.7.3"
+coroutines = "1.9.0"
+serialization = "1.7.3"
+r8 = "8.13.25"
+jna = "5.19.1"
+junit = "5.10.2"
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+compose = { id = "org.jetbrains.compose", version.ref = "compose" }
+
+[libraries]
+coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "coroutines" }
+serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+# R8's retrace API, used to de-obfuscate stack traces with a ProGuard/R8 mapping file (as Android Studio does).
+r8 = { module = "com.android.tools:r8", version.ref = "r8" }
+# Only used on Windows, to give the native title bar the IDE's dark colors.
+jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }

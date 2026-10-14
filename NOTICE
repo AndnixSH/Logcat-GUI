@@ -1,0 +1,66 @@
+Logcat GUI
+Copyright 2026 The Logcat-GUI Authors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+------------------------------------------------------------------------------
+Design attribution
+------------------------------------------------------------------------------
+
+The user interface, message model, filter query language, settings, Logcat
+color scheme (LogcatColorSchemeDarcula.xml values), tag color palette
+(palette/logcat-tags-palette.json values) and `.logcat` export format are
+modeled on the Logcat tool window of Android Studio, developed as part of the
+Android Open Source Project (AOSP):
+
+    https://android.googlesource.com/platform/tools/adt/idea/  (module: logcat/)
+
+    Copyright The Android Open Source Project
+    Licensed under the Apache License, Version 2.0
+
+The code in this repository is an independent re-implementation and does not
+depend on the IntelliJ Platform or the Android Studio plugin. Any source file
+that is copied or adapted from AOSP in the future MUST keep its original
+"Copyright The Android Open Source Project" header and carry a notice that it
+was modified (Apache License 2.0, Section 4).
+
+UI colors are taken from the IntelliJ Platform "Islands Dark" theme
+(ManyIslandsDark.theme.json) and the "Dark" editor color scheme.
+Copyright JetBrains s.r.o. and contributors; Apache License, Version 2.0.
+
+------------------------------------------------------------------------------
+Bundled third-party files
+------------------------------------------------------------------------------
+
+src/main/resources/icons/*.svg (except app-icon.svg)
+  - IntelliJ Platform icons (new UI "expui" set):
+    Copyright 2000-2024 JetBrains s.r.o. and contributors.
+    Licensed under the Apache License, Version 2.0.
+  - Android Studio icons (device, screenshot, screen record, logcat filter
+    history and favorites):
+    Copyright The Android Open Source Project.
+    Licensed under the Apache License, Version 2.0.
+  Each SVG keeps its original copyright header.
+
+src/main/resources/fonts/*
+  - Inter, Copyright (c) 2016 The Inter Project Authors.
+  - JetBrains Mono, Copyright 2020 The JetBrains Mono Project Authors.
+  Licensed under the SIL Open Font License, Version 1.1 (see licenses/OFL-1.1.txt).
+
+------------------------------------------------------------------------------
+Third-party libraries (runtime dependencies)
+------------------------------------------------------------------------------
+
+  - Kotlin, kotlinx.coroutines, kotlinx.serialization, Compose Multiplatform
+    (JetBrains s.r.o.) — Apache License, Version 2.0
+  - R8 (com.android.tools:r8), used for ProGuard/R8 retrace — BSD 3-Clause
+    License; the jar carries its full license text, including bundled libraries
+  - Java Native Access (JNA) — Apache License, Version 2.0 or LGPL 2.1
+
+------------------------------------------------------------------------------
+Trademarks
+------------------------------------------------------------------------------
+
+"Android" and "Android Studio" are trademarks of Google LLC. "IntelliJ" and
+"JetBrains" are trademarks of JetBrains s.r.o. This product is not affiliated
+with, endorsed by, or sponsored by Google LLC or JetBrains s.r.o.
