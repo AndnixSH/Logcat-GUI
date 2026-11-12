@@ -132,10 +132,16 @@ Linux machine.
 
 Every installer bundles a trimmed Java runtime, so users don't need Java.
 
-**CI.** [.github/workflows/build.yml](.github/workflows/build.yml) tests and packages on five
-GitHub runners: Windows x64, macOS arm64, macOS x64, Linux x64, and Linux arm64. Pushing a
-`v*` tag (e.g. `git tag v1.0.0 && git push --tags`) publishes all the installers as a GitHub
-release.
+**CI builds are portable.** [.github/workflows/build.yml](.github/workflows/build.yml) tests
+on five GitHub runners (Windows x64, macOS arm64, macOS x64, Linux x64, Linux arm64) and
+uploads one portable archive per platform: a `.zip` for Windows and macOS, a `.tar.gz` for
+Linux. Unpack it and run `LogcatGUI.exe`, `LogcatGUI.app`, or `bin/LogcatGUI`; nothing is
+installed. Pushing a `v*` tag (e.g. `git tag v1.0.0 && git push --tags`) publishes the
+archives as a GitHub release. The installer tasks above still work locally.
+
+**Download warnings.** The executables are not code-signed, so browsers and Windows
+SmartScreen may warn about or block the downloads. That is a reputation check on unsigned,
+rarely downloaded files, and only code signing removes it.
 
 **macOS signing.** The DMG is not signed or notarized. Gatekeeper blocks it the first time;
 right-click the app and choose **Open**, or run `xattr -dr com.apple.quarantine "/Applications/Logcat GUI.app"`.

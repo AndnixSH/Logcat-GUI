@@ -1,8 +1,9 @@
-# Builds and tests on every platform, and packages native installers.
+# Builds and tests on every platform, and packages a portable build for each.
 #
-# Installers come from jpackage, which can only build for the OS and CPU it runs on, so
-# each target gets its own runner. Pushing a tag like `v1.0.0` also publishes the
-# installers as a GitHub release.
+# A portable build is the app folder with its own trimmed Java runtime: unpack and run,
+# nothing to install. jpackage can only build for the OS and CPU it runs on, so each
+# target gets its own runner. Pushing a tag like `v1.0.0` also publishes the archives
+# as a GitHub release.
 name: Build
 
 on:
@@ -29,24 +30,19 @@ jobs:
         include:
           - name: Windows x64
             runner: windows-latest
-            tasks: packageMsi
-            artifact: windows-x64
+            archive: LogcatGUI-windows-x64.zip
           - name: macOS arm64 (Apple silicon)
             runner: macos-15
-            tasks: packageDmg
-            artifact: macos-arm64
+            archive: LogcatGUI-macos-arm64.zip
           - name: macOS x64 (Intel)
             runner: macos-15-intel
-            tasks: packageDmg
-            artifact: macos-x64
+            archive: LogcatGUI-macos-x64.zip
           - name: Linux x64
             runner: ubuntu-24.04
-            tasks: packageDeb packageRpm
-            artifact: linux-x64
+            archive: LogcatGUI-linux-x64.tar.gz
           - name: Linux arm64
             runner: ubuntu-24.04-arm
-            tasks: packageDeb packageRpm
-            artifact: linux-arm64
+            archive: LogcatGUI-linux-arm64.tar.gz
     steps:
       - uses: actions/checkout@v4
 
@@ -57,20 +53,29 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Install Linux packaging tools
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y fakeroot rpm
-
       - name: Test
         run: ./gradlew test --console=plain
 
-      - name: Package
-        run: ./gradlew ${{ matrix.tasks }} --console=plain
+      - name: Build the portable app
+        run: ./gradlew createDistributable --console=plain
 
-      - uses: actions/upload-artifact@v4
+      # Archive here instead of letting upload-artifact zip the folder: its zip drops
+      # the executable bits that macOS and Linux need.
+      - name: Archive
+        run: |
+          cd build/compose/binaries/main/app
+          ls -l
+          case "$RUNNER_OS" in
+            Windows) 7z a -tzip "$GITHUB_WORKSPACE/${{ matrix.archive }}" ./* ;;
+            macOS)   ditto -c -k --keepParent ./*.app "$GITHUB_WORKSPACE/${{ matrix.archive }}" ;;
+            Linux)   tar -czf "$GITHUB_WORKSPACE/${{ matrix.archive }}" ./* ;;
+          esac
+
+      # archive: false uploads the file as it is, so the download isn't a zip in a zip.
+      - uses: actions/upload-artifact@v7
         with:
-          name: logcat-gui-${{ matrix.artifact }}
-          path: build/compose/binaries/main/*/*
+          path: ${{ matrix.archive }}
+          archive: false
           if-no-files-found: error
 
   release:
@@ -81,23 +86,12 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
-          path: dist
+          path: release
+          merge-multiple: true
 
-      # Installer names don't include the CPU, so add it before uploading.
-      - name: Name installers by platform
-        run: |
-          mkdir release
-          # Each artifact keeps jpackage's msi/, dmg/, deb/, rpm/ subfolders.
-          for dir in dist/logcat-gui-*; do
-            platform="${dir#dist/logcat-gui-}"
-            find "$dir" -type f | while read -r file; do
-              name="$(basename "$file")"
-              cp "$file" "release/${name%.*}-${platform}.${name##*.}"
-            done
-          done
-          ls -l release
+      - run: ls -l release
 
       - uses: softprops/action-gh-release@v2
         with:
